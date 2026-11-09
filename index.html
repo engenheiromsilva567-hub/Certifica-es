@@ -1,0 +1,982 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title id="pageTitle">CertiTrack Pro - Gestão de Certificações</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <!-- Google Fonts Inter -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style id="dynamicStyles">
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f8fafc;
+        }
+        .theme-primary-bg { background-color: var(--primary-color, #4f46e5); }
+        .theme-primary-text { color: var(--primary-color, #4f46e5); }
+        .theme-primary-border { border-color: var(--primary-color, #4f46e5); }
+        
+        .status-badge-valida { background-color: #dcfce7; color: #15803d; border: 1px solid #bbf7d0; }
+        .status-badge-atencao { background-color: #fef9c3; color: #a16207; border: 1px solid #fef08a; }
+        .status-badge-vencida { background-color: #fee2e2; color: #b91c1c; border: 1px solid #fecaca; }
+
+        ::-webkit-scrollbar { width: 6px; height: 6px; }
+        ::-webkit-scrollbar-track { background: #f1f5f9; }
+        ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+    </style>
+</head>
+<body class="text-slate-800 antialiased min-h-screen flex flex-col">
+
+    <!-- Top Navigation Bar -->
+    <header class="bg-white border-b border-slate-200 sticky top-0 z-30">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16 items-center">
+                <div class="flex items-center gap-3">
+                    <div id="headerIconBg" class="bg-indigo-600 text-white p-2.5 rounded-xl shadow-md transition-colors">
+                        <i data-lucide="award" class="w-6 h-6"></i>
+                    </div>
+                    <div>
+                        <h1 id="appHeaderTitle" class="text-xl font-bold text-slate-900 leading-tight">CertiTrack Pro</h1>
+                        <p id="appHeaderSubtitle" class="text-xs text-slate-500 font-medium">Gestão & Monitoramento de Certificações</p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button id="btnSettings" onclick="openSettingsModal()" title="Personalizar Sistema" class="flex items-center gap-2 px-3 py-2 text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 rounded-xl transition-colors">
+                        <i data-lucide="settings" class="w-4 h-4"></i>
+                        <span class="hidden sm:inline">Configurações</span>
+                    </button>
+                    <button id="btnNewCert" onclick="openModal()" class="flex items-center gap-2 bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl text-sm font-semibold shadow-sm transition-all transform active:scale-95">
+                        <i data-lucide="plus-circle" class="w-4 h-4"></i>
+                        <span class="hidden sm:inline">Nova Certificação</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Area -->
+    <main class="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+
+        <!-- Notification Banner Container -->
+        <div id="toastContainer" class="fixed bottom-5 right-5 z-50 flex flex-col gap-2"></div>
+
+        <!-- KPI Summary Cards -->
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+            <!-- Total -->
+            <div class="bg-white p-5 rounded-2xl border border-slate-200/80 shadow-sm flex items-center justify-between">
+                <div>
+                    <p class="text-xs font-semibold uppercase tracking-wider text-slate-500">Total Registradas</p>
+                    <h3 id="kpiTotal" class="text-3xl font-extrabold text-slate-900 mt-1">0</h3>
+                </div>
+                <div class="bg-slate-100 text-slate-600 p-3 rounded-xl">
+                    <i data-lucide="layers" class="w-6 h-6"></i>
+                </div>
+            </div>
+
+            <!-- Válidas / No Prazo -->
+            <div class="bg-white p-5 rounded-2xl border border-emerald-100 shadow-sm flex items-center justify-between">
+                <div>
+                    <p class="text-xs font-semibold uppercase tracking-wider text-emerald-600">No Prazo</p>
+                    <h3 id="kpiValid" class="text-3xl font-extrabold text-emerald-700 mt-1">0</h3>
+                </div>
+                <div class="bg-emerald-50 text-emerald-600 p-3 rounded-xl border border-emerald-100">
+                    <i data-lucide="check-circle-2" class="w-6 h-6"></i>
+                </div>
+            </div>
+
+            <!-- Próximas do Vencimento -->
+            <div class="bg-white p-5 rounded-2xl border border-amber-100 shadow-sm flex items-center justify-between">
+                <div>
+                    <p id="kpiWarningTitle" class="text-xs font-semibold uppercase tracking-wider text-amber-600">Vence em 30d</p>
+                    <h3 id="kpiWarning" class="text-3xl font-extrabold text-amber-700 mt-1">0</h3>
+                </div>
+                <div class="bg-amber-50 text-amber-600 p-3 rounded-xl border border-amber-100">
+                    <i data-lucide="alert-triangle" class="w-6 h-6"></i>
+                </div>
+            </div>
+
+            <!-- Vencidas -->
+            <div class="bg-white p-5 rounded-2xl border border-rose-100 shadow-sm flex items-center justify-between">
+                <div>
+                    <p class="text-xs font-semibold uppercase tracking-wider text-rose-600">Vencidas</p>
+                    <h3 id="kpiExpired" class="text-3xl font-extrabold text-rose-700 mt-1">0</h3>
+                </div>
+                <div class="bg-rose-50 text-rose-600 p-3 rounded-xl border border-rose-100">
+                    <i data-lucide="x-circle" class="w-6 h-6"></i>
+                </div>
+            </div>
+        </div>
+
+        <!-- Filters & Search Toolbar -->
+        <div class="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-sm flex flex-col md:flex-row gap-4 justify-between items-center">
+            <!-- Search bar -->
+            <div class="relative w-full md:w-80">
+                <i data-lucide="search" class="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                <input type="text" id="searchInput" placeholder="Buscar por título, órgão, ID..." class="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white transition-all">
+            </div>
+
+            <!-- Filters -->
+            <div class="flex flex-wrap items-center gap-3 w-full md:w-auto justify-end">
+                <div class="flex items-center gap-2 w-full sm:w-auto">
+                    <label class="text-xs font-semibold text-slate-500 uppercase">Status:</label>
+                    <select id="filterStatus" class="w-full sm:w-auto px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        <option value="ALL">Todos os Status</option>
+                        <option value="VALID">No Prazo</option>
+                        <option value="WARNING">A Vencer</option>
+                        <option value="EXPIRED">Vencidas</option>
+                    </select>
+                </div>
+
+                <div class="flex items-center gap-2 w-full sm:w-auto">
+                    <label class="text-xs font-semibold text-slate-500 uppercase">Categoria:</label>
+                    <select id="filterCategory" class="w-full sm:w-auto px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        <option value="ALL">Todas as Categorias</option>
+                    </select>
+                </div>
+
+                <div class="flex items-center gap-2 w-full sm:w-auto">
+                    <label class="text-xs font-semibold text-slate-500 uppercase">Ordem:</label>
+                    <select id="sortOrder" class="w-full sm:w-auto px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        <option value="EXP_ASC">Vencimento (Mais Próximo)</option>
+                        <option value="EXP_DESC">Vencimento (Mais Distante)</option>
+                        <option value="NAME_ASC">Nome (A-Z)</option>
+                    </select>
+                </div>
+            </div>
+        </div>
+
+        <!-- Certifications Table -->
+        <div class="bg-white rounded-2xl border border-slate-200/80 shadow-sm overflow-hidden">
+            <div class="overflow-x-auto">
+                <table class="w-full text-left border-collapse">
+                    <thead>
+                        <tr class="bg-slate-50/80 border-b border-slate-200 text-xs font-bold text-slate-500 uppercase tracking-wider">
+                            <th class="py-3.5 px-6">Certificação</th>
+                            <th class="py-3.5 px-4">Categoria</th>
+                            <th class="py-3.5 px-4">Emissão</th>
+                            <th class="py-3.5 px-4">Vencimento</th>
+                            <th class="py-3.5 px-4">Status</th>
+                            <th class="py-3.5 px-6 text-right">Ações</th>
+                        </tr>
+                    </thead>
+                    <tbody id="certTableBody" class="divide-y divide-slate-100 text-sm">
+                        <!-- Dynamic Rows -->
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Empty State -->
+            <div id="emptyState" class="hidden py-16 px-4 text-center">
+                <div class="w-16 h-16 bg-indigo-50 text-indigo-500 rounded-full flex items-center justify-center mx-auto mb-4">
+                    <i data-lucide="award" class="w-8 h-8"></i>
+                </div>
+                <h3 class="text-base font-semibold text-slate-800">Nenhuma certificação encontrada</h3>
+                <p class="text-sm text-slate-500 max-w-sm mx-auto mt-1">Tente ajustar seus filtros de busca ou adicione uma nova certificação ao sistema.</p>
+                <button onclick="openModal()" class="mt-4 px-4 py-2 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold rounded-xl shadow-sm transition-colors inline-flex items-center gap-2">
+                    <i data-lucide="plus" class="w-4 h-4"></i>
+                    Cadastrar Certificação
+                </button>
+            </div>
+        </div>
+    </main>
+
+    <!-- Modal Form (Create / Edit Cert) -->
+    <div id="certModal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden opacity-0 transition-opacity duration-200">
+        <div class="bg-white rounded-2xl max-w-lg w-full shadow-2xl overflow-hidden transform scale-95 transition-transform duration-200 border border-slate-100">
+            <div class="px-6 py-4 bg-slate-50 border-b border-slate-100 flex justify-between items-center">
+                <h2 id="modalTitle" class="text-lg font-bold text-slate-900">Nova Certificação</h2>
+                <button onclick="closeModal()" class="text-slate-400 hover:text-slate-600 rounded-lg p-1 hover:bg-slate-200/60 transition-colors">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <form id="certForm" class="p-6 space-y-4">
+                <input type="hidden" id="certId">
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 uppercase mb-1" for="name">Nome da Certificação *</label>
+                    <input type="text" id="name" required placeholder="Ex: AWS Certified Solutions Architect" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white">
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 uppercase mb-1" for="issuer">Órgão / Emissor *</label>
+                        <input type="text" id="issuer" required placeholder="Ex: Amazon Web Services" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 uppercase mb-1" for="category">Categoria *</label>
+                        <select id="category" required class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white">
+                            <!-- Options filled dynamically -->
+                        </select>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 uppercase mb-1" for="issueDate">Data de Emissão *</label>
+                        <input type="date" id="issueDate" required class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 uppercase mb-1" for="expiryDate">Data de Vencimento *</label>
+                        <input type="date" id="expiryDate" required class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white">
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 uppercase mb-1" for="code">ID / Código Registro</label>
+                        <input type="text" id="code" placeholder="Ex: AWS-129038102" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white">
+                    </div>
+                    <div>
+                        <label class="block text-xs font-semibold text-slate-600 uppercase mb-1" for="link">Link do Certificado (URL)</label>
+                        <input type="url" id="link" placeholder="https://..." class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-600 uppercase mb-1" for="notes">Observações</label>
+                    <textarea id="notes" rows="2" placeholder="Notas sobre renovação, cursos preparatórios..." class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:bg-white resize-none"></textarea>
+                </div>
+
+                <div class="pt-3 flex justify-end gap-3">
+                    <button type="button" onclick="closeModal()" class="px-4 py-2.5 border border-slate-200 rounded-xl text-sm font-semibold text-slate-600 hover:bg-slate-50 transition-colors">Cancelar</button>
+                    <button type="submit" class="btn-theme-action px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold rounded-xl shadow-sm transition-colors">Salvar Certificação</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- Modal Settings & Personalization -->
+    <div id="settingsModal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden opacity-0 transition-opacity duration-200">
+        <div class="bg-white rounded-2xl max-w-xl w-full shadow-2xl overflow-hidden transform scale-95 transition-transform duration-200 border border-slate-100">
+            <div class="px-6 py-4 bg-slate-50 border-b border-slate-100 flex justify-between items-center">
+                <div class="flex items-center gap-2">
+                    <i data-lucide="sliders" class="w-5 h-5 text-slate-600"></i>
+                    <h2 class="text-lg font-bold text-slate-900">Personalização & Configurações</h2>
+                </div>
+                <button onclick="closeSettingsModal()" class="text-slate-400 hover:text-slate-600 rounded-lg p-1 hover:bg-slate-200/60 transition-colors">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <div class="p-6 space-y-6 max-h-[80vh] overflow-y-auto">
+                <!-- System Branding -->
+                <div class="space-y-3">
+                    <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider">Identidade do Sistema</h3>
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 uppercase mb-1" for="cfgAppName">Nome do Sistema / Empresa</label>
+                            <input type="text" id="cfgAppName" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-semibold text-slate-600 uppercase mb-1" for="cfgSubtitle">Subtítulo</label>
+                            <input type="text" id="cfgSubtitle" class="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Theme Color Palette -->
+                <div class="space-y-3">
+                    <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider">Cor do Tema</h3>
+                    <div class="flex flex-wrap gap-3 items-center">
+                        <button onclick="setThemePreset('#4f46e5')" class="w-8 h-8 rounded-full bg-indigo-600 ring-2 ring-offset-2 ring-transparent hover:ring-indigo-400 transition-all"></button>
+                        <button onclick="setThemePreset('#2563eb')" class="w-8 h-8 rounded-full bg-blue-600 ring-2 ring-offset-2 ring-transparent hover:ring-blue-400 transition-all"></button>
+                        <button onclick="setThemePreset('#059669')" class="w-8 h-8 rounded-full bg-emerald-600 ring-2 ring-offset-2 ring-transparent hover:ring-emerald-400 transition-all"></button>
+                        <button onclick="setThemePreset('#ea580c')" class="w-8 h-8 rounded-full bg-orange-600 ring-2 ring-offset-2 ring-transparent hover:ring-orange-400 transition-all"></button>
+                        <button onclick="setThemePreset('#7c3aed')" class="w-8 h-8 rounded-full bg-purple-600 ring-2 ring-offset-2 ring-transparent hover:ring-purple-400 transition-all"></button>
+                        <button onclick="setThemePreset('#0f172a')" class="w-8 h-8 rounded-full bg-slate-900 ring-2 ring-offset-2 ring-transparent hover:ring-slate-400 transition-all"></button>
+                        
+                        <div class="flex items-center gap-2 border-l border-slate-200 pl-3 ml-1">
+                            <span class="text-xs text-slate-500 font-medium">Custom:</span>
+                            <input type="color" id="cfgThemeColor" class="w-8 h-8 rounded-lg cursor-pointer border border-slate-200">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Warning Threshold -->
+                <div class="space-y-2">
+                    <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider">Alerta de Vencimento</h3>
+                    <div class="flex items-center gap-3">
+                        <input type="number" id="cfgWarningDays" min="1" max="365" class="w-24 px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm font-semibold focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        <span class="text-sm text-slate-600">Dias de antecedência para alerta amarela (A Vencer)</span>
+                    </div>
+                </div>
+
+                <!-- Category Manager -->
+                <div class="space-y-3">
+                    <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider">Gerenciador de Categorias</h3>
+                    <div class="flex gap-2">
+                        <input type="text" id="newCategoryInput" placeholder="Nova categoria..." class="flex-1 px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        <button onclick="addCategory()" class="px-4 py-2 bg-slate-800 hover:bg-slate-900 text-white text-xs font-semibold rounded-xl transition-colors">Adicionar</button>
+                    </div>
+                    <div id="categoryChips" class="flex flex-wrap gap-2 pt-1">
+                        <!-- Chips inserted dynamically -->
+                    </div>
+                </div>
+
+                <!-- Backup, Import & Export -->
+                <div class="space-y-3 pt-4 border-t border-slate-100">
+                    <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider">Backup e Dados</h3>
+                    <div class="flex flex-wrap gap-2">
+                        <button onclick="exportJSON()" class="flex items-center gap-2 px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold transition-colors">
+                            <i data-lucide="download" class="w-4 h-4"></i> Exportar JSON
+                        </button>
+                        <button onclick="exportCSV()" class="flex items-center gap-2 px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold transition-colors">
+                            <i data-lucide="file-spreadsheet" class="w-4 h-4"></i> Exportar CSV
+                        </button>
+                        <label class="flex items-center gap-2 px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-semibold cursor-pointer transition-colors">
+                            <i data-lucide="upload" class="w-4 h-4"></i> Importar JSON
+                            <input type="file" id="importFileInput" accept=".json" class="hidden" onchange="importJSON(event)">
+                        </label>
+                    </div>
+                </div>
+            </div>
+
+            <div class="px-6 py-4 bg-slate-50 border-t border-slate-100 flex justify-end gap-3">
+                <button onclick="saveSettings()" class="btn-theme-action px-5 py-2.5 bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-semibold rounded-xl shadow-sm transition-colors">Salvar Configurações</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Details View -->
+    <div id="detailsModal" class="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden opacity-0 transition-opacity duration-200">
+        <div class="bg-white rounded-2xl max-w-md w-full shadow-2xl overflow-hidden transform scale-95 transition-transform duration-200 border border-slate-100 p-6 space-y-4">
+            <div class="flex justify-between items-start border-b border-slate-100 pb-3">
+                <div>
+                    <span id="detailBadge" class="px-2.5 py-0.5 rounded-full text-xs font-bold inline-block mb-1">Status</span>
+                    <h3 id="detailName" class="text-lg font-bold text-slate-900 leading-snug">Nome</h3>
+                    <p id="detailIssuer" class="text-xs text-slate-500">Órgão</p>
+                </div>
+                <button onclick="closeDetailsModal()" class="text-slate-400 hover:text-slate-600 rounded-lg p-1 hover:bg-slate-100 transition-colors">
+                    <i data-lucide="x" class="w-5 h-5"></i>
+                </button>
+            </div>
+
+            <div class="space-y-3 text-sm">
+                <div class="flex justify-between py-1 border-b border-slate-50">
+                    <span class="text-slate-500 font-medium">Categoria:</span>
+                    <span id="detailCategory" class="font-semibold text-slate-700">--</span>
+                </div>
+                <div class="flex justify-between py-1 border-b border-slate-50">
+                    <span class="text-slate-500 font-medium">ID da Credencial:</span>
+                    <span id="detailCode" class="font-mono text-slate-700">--</span>
+                </div>
+                <div class="flex justify-between py-1 border-b border-slate-50">
+                    <span class="text-slate-500 font-medium">Data de Emissão:</span>
+                    <span id="detailIssueDate" class="text-slate-700">--</span>
+                </div>
+                <div class="flex justify-between py-1 border-b border-slate-50">
+                    <span class="text-slate-500 font-medium">Data de Vencimento:</span>
+                    <span id="detailExpiryDate" class="text-slate-700 font-semibold">--</span>
+                </div>
+                <div class="flex justify-between py-1 border-b border-slate-50">
+                    <span class="text-slate-500 font-medium">Tempo Restante:</span>
+                    <span id="detailDaysLeft" class="font-bold">--</span>
+                </div>
+                <div id="detailLinkContainer" class="flex justify-between py-1 border-b border-slate-50 hidden">
+                    <span class="text-slate-500 font-medium">Comprovante:</span>
+                    <a id="detailLink" href="#" target="_blank" class="text-indigo-600 hover:underline flex items-center gap-1 font-semibold text-xs">
+                        Acessar Link <i data-lucide="external-link" class="w-3 h-3"></i>
+                    </a>
+                </div>
+                <div class="pt-2">
+                    <span class="text-slate-500 font-medium block mb-1">Observações:</span>
+                    <p id="detailNotes" class="bg-slate-50 p-3 rounded-xl text-slate-600 text-xs leading-relaxed border border-slate-100">--</p>
+                </div>
+            </div>
+
+            <div class="pt-3 flex justify-end">
+                <button onclick="closeDetailsModal()" class="w-full py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 text-sm font-semibold rounded-xl transition-colors">Fechar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Application Logic Script -->
+    <script>
+        const DEFAULT_CONFIG = {
+            appName: 'CertiTrack Pro',
+            subtitle: 'Gestão & Monitoramento de Certificações',
+            themeColor: '#4f46e5',
+            warningDays: 30,
+            categories: ['TI & Cloud', 'Segurança da Informação', 'Gestão & Processos', 'Qualidade', 'Idiomas', 'Saúde & Segurança', 'Outros']
+        };
+
+        const MOCK_CERTIFICATIONS = [
+            {
+                id: '1',
+                name: 'AWS Certified Solutions Architect',
+                issuer: 'Amazon Web Services',
+                category: 'TI & Cloud',
+                issueDate: '2023-01-15',
+                expiryDate: getOffsetDateStr(45),
+                code: 'AWS-8392019',
+                link: 'https://aws.amazon.com/verification',
+                notes: 'Necessário agendar exame de recertificação antes do prazo final.'
+            },
+            {
+                id: '2',
+                name: 'Scrum Master Professional (PSM I)',
+                issuer: 'Scrum.org',
+                category: 'Gestão & Processos',
+                issueDate: '2024-05-10',
+                expiryDate: getOffsetDateStr(15),
+                code: 'PSM-901823',
+                link: '',
+                notes: 'Badge verificado no Credly.'
+            },
+            {
+                id: '3',
+                name: 'ISO 27001 Lead Auditor',
+                issuer: 'PECB',
+                category: 'Segurança da Informação',
+                issueDate: '2021-03-01',
+                expiryDate: getOffsetDateStr(-60),
+                code: 'ISO-2021-441',
+                link: '',
+                notes: 'Certificação vencida. Avaliar renovação.'
+            }
+        ];
+
+        let config = { ...DEFAULT_CONFIG };
+        let certifications = [];
+
+        function getOffsetDateStr(days) {
+            const date = new Date();
+            date.setDate(date.getDate() + days);
+            return date.toISOString().split('T')[0];
+        }
+
+        document.addEventListener('DOMContentLoaded', () => {
+            loadAllData();
+            applyThemeSettings();
+            setupEventListeners();
+            refreshUI();
+            lucide.createIcons();
+        });
+
+        function loadAllData() {
+            const storedCfg = localStorage.getItem('certitrack_config');
+            if (storedCfg) {
+                try { config = { ...DEFAULT_CONFIG, ...JSON.parse(storedCfg) }; } 
+                catch (e) { config = { ...DEFAULT_CONFIG }; }
+            }
+
+            const storedCerts = localStorage.getItem('certitrack_data');
+            if (storedCerts) {
+                try { certifications = JSON.parse(storedCerts); }
+                catch (e) { certifications = MOCK_CERTIFICATIONS; }
+            } else {
+                certifications = MOCK_CERTIFICATIONS;
+                saveCertifications();
+            }
+        }
+
+        function saveConfig() {
+            localStorage.setItem('certitrack_config', JSON.stringify(config));
+        }
+
+        function saveCertifications() {
+            localStorage.setItem('certitrack_data', JSON.stringify(certifications));
+        }
+
+        function applyThemeSettings() {
+            document.title = config.appName;
+            document.getElementById('appHeaderTitle').textContent = config.appName;
+            document.getElementById('appHeaderSubtitle').textContent = config.subtitle;
+            document.getElementById('headerIconBg').style.backgroundColor = config.themeColor;
+            
+            document.querySelectorAll('.btn-theme-action').forEach(el => {
+                el.style.backgroundColor = config.themeColor;
+            });
+            document.getElementById('btnNewCert').style.backgroundColor = config.themeColor;
+            document.getElementById('kpiWarningTitle').textContent = `Vence em ${config.warningDays}d`;
+
+            document.documentElement.style.setProperty('--primary-color', config.themeColor);
+        }
+
+        function calculateStatus(expiryDateStr) {
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+
+            const [year, month, day] = expiryDateStr.split('-').map(Number);
+            const expDate = new Date(year, month - 1, day);
+            expDate.setHours(0, 0, 0, 0);
+
+            const diffTime = expDate - today;
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+            if (diffDays < 0) {
+                return { code: 'EXPIRED', days: diffDays, label: 'Vencida', class: 'status-badge-vencida' };
+            } else if (diffDays <= config.warningDays) {
+                return { code: 'WARNING', days: diffDays, label: `Vence em ${diffDays}d`, class: 'status-badge-atencao' };
+            } else {
+                return { code: 'VALID', days: diffDays, label: 'No Prazo', class: 'status-badge-valida' };
+            }
+        }
+
+        function refreshUI() {
+            renderKPIs();
+            renderCategoryOptions();
+            renderTable();
+        }
+
+        function renderKPIs() {
+            let validCount = 0;
+            let warningCount = 0;
+            let expiredCount = 0;
+
+            certifications.forEach(cert => {
+                const status = calculateStatus(cert.expiryDate);
+                if (status.code === 'VALID') validCount++;
+                if (status.code === 'WARNING') warningCount++;
+                if (status.code === 'EXPIRED') expiredCount++;
+            });
+
+            document.getElementById('kpiTotal').textContent = certifications.length;
+            document.getElementById('kpiValid').textContent = validCount;
+            document.getElementById('kpiWarning').textContent = warningCount;
+            document.getElementById('kpiExpired').textContent = expiredCount;
+        }
+
+        function renderCategoryOptions() {
+            const formCategory = document.getElementById('category');
+            const filterCategory = document.getElementById('filterCategory');
+            const currentFilter = filterCategory.value;
+
+            formCategory.innerHTML = '';
+            config.categories.forEach(cat => {
+                const opt = document.createElement('option');
+                opt.value = cat;
+                opt.textContent = cat;
+                formCategory.appendChild(opt);
+            });
+
+            filterCategory.innerHTML = '<option value="ALL">Todas as Categorias</option>';
+            config.categories.forEach(cat => {
+                const opt = document.createElement('option');
+                opt.value = cat;
+                opt.textContent = cat;
+                if (cat === currentFilter) opt.selected = true;
+                filterCategory.appendChild(opt);
+            });
+        }
+
+        function renderTable() {
+            const tbody = document.getElementById('certTableBody');
+            const emptyState = document.getElementById('emptyState');
+            tbody.innerHTML = '';
+
+            const search = document.getElementById('searchInput').value.toLowerCase().trim();
+            const statusFilter = document.getElementById('filterStatus').value;
+            const categoryFilter = document.getElementById('filterCategory').value;
+            const sortOrder = document.getElementById('sortOrder').value;
+
+            let filtered = certifications.filter(cert => {
+                const status = calculateStatus(cert.expiryDate);
+                const matchSearch = cert.name.toLowerCase().includes(search) ||
+                                    cert.issuer.toLowerCase().includes(search) ||
+                                    (cert.code && cert.code.toLowerCase().includes(search));
+
+                const matchStatus = statusFilter === 'ALL' || status.code === statusFilter;
+                const matchCategory = categoryFilter === 'ALL' || cert.category === categoryFilter;
+
+                return matchSearch && matchStatus && matchCategory;
+            });
+
+            filtered.sort((a, b) => {
+                if (sortOrder === 'EXP_ASC') return new Date(a.expiryDate) - new Date(b.expiryDate);
+                if (sortOrder === 'EXP_DESC') return new Date(b.expiryDate) - new Date(a.expiryDate);
+                if (sortOrder === 'NAME_ASC') return a.name.localeCompare(b.name);
+                return 0;
+            });
+
+            if (filtered.length === 0) {
+                emptyState.classList.remove('hidden');
+            } else {
+                emptyState.classList.add('hidden');
+
+                filtered.forEach(cert => {
+                    const status = calculateStatus(cert.expiryDate);
+                    const tr = document.createElement('tr');
+                    tr.className = 'hover:bg-slate-50/80 transition-colors group';
+
+                    tr.innerHTML = `
+                        <td class="py-4 px-6">
+                            <div class="font-semibold text-slate-900 group-hover:text-indigo-600 transition-colors">${escapeHtml(cert.name)}</div>
+                            <div class="text-xs text-slate-500">${escapeHtml(cert.issuer)} ${cert.code ? `• <span class="font-mono text-slate-400">${escapeHtml(cert.code)}</span>` : ''}</div>
+                        </td>
+                        <td class="py-4 px-4">
+                            <span class="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium bg-slate-100 text-slate-700 border border-slate-200">
+                                ${escapeHtml(cert.category)}
+                            </span>
+                        </td>
+                        <td class="py-4 px-4 text-xs text-slate-600 font-medium">${formatDate(cert.issueDate)}</td>
+                        <td class="py-4 px-4 text-xs font-semibold text-slate-700">${formatDate(cert.expiryDate)}</td>
+                        <td class="py-4 px-4">
+                            <span class="px-2.5 py-1 rounded-full text-xs font-bold ${status.class}">
+                                ${status.label}
+                            </span>
+                        </td>
+                        <td class="py-4 px-6 text-right">
+                            <div class="flex items-center justify-end gap-1">
+                                <button onclick="viewDetails('${cert.id}')" title="Ver Detalhes" class="p-1.5 text-slate-400 hover:text-indigo-600 rounded-lg hover:bg-slate-100 transition-colors">
+                                    <i data-lucide="eye" class="w-4 h-4"></i>
+                                </button>
+                                <button onclick="editCert('${cert.id}')" title="Editar" class="p-1.5 text-slate-400 hover:text-amber-600 rounded-lg hover:bg-slate-100 transition-colors">
+                                    <i data-lucide="edit-2" class="w-4 h-4"></i>
+                                </button>
+                                <button onclick="deleteCert('${cert.id}')" title="Excluir" class="p-1.5 text-slate-400 hover:text-rose-600 rounded-lg hover:bg-slate-100 transition-colors">
+                                    <i data-lucide="trash-2" class="w-4 h-4"></i>
+                                </button>
+                            </div>
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            }
+
+            lucide.createIcons();
+        }
+
+        function setupEventListeners() {
+            document.getElementById('certForm').addEventListener('submit', handleFormSubmit);
+            document.getElementById('searchInput').addEventListener('input', refreshUI);
+            document.getElementById('filterStatus').addEventListener('change', refreshUI);
+            document.getElementById('filterCategory').addEventListener('change', refreshUI);
+            document.getElementById('sortOrder').addEventListener('change', refreshUI);
+            document.getElementById('cfgThemeColor').addEventListener('input', (e) => setThemePreset(e.target.value));
+        }
+
+        // Modal Form Handlers
+        function openModal(editId = null) {
+            const modal = document.getElementById('certModal');
+            const form = document.getElementById('certForm');
+            const title = document.getElementById('modalTitle');
+
+            form.reset();
+            document.getElementById('certId').value = '';
+
+            if (editId) {
+                const cert = certifications.find(c => c.id === editId);
+                if (cert) {
+                    title.textContent = 'Editar Certificação';
+                    document.getElementById('certId').value = cert.id;
+                    document.getElementById('name').value = cert.name;
+                    document.getElementById('issuer').value = cert.issuer;
+                    document.getElementById('category').value = cert.category;
+                    document.getElementById('issueDate').value = cert.issueDate;
+                    document.getElementById('expiryDate').value = cert.expiryDate;
+                    document.getElementById('code').value = cert.code || '';
+                    document.getElementById('link').value = cert.link || '';
+                    document.getElementById('notes').value = cert.notes || '';
+                }
+            } else {
+                title.textContent = 'Nova Certificação';
+            }
+
+            modal.classList.remove('hidden');
+            setTimeout(() => {
+                modal.classList.remove('opacity-0');
+                modal.firstElementChild.classList.remove('scale-95');
+                modal.firstElementChild.classList.add('scale-100');
+            }, 10);
+        }
+
+        function closeModal() {
+            const modal = document.getElementById('certModal');
+            modal.classList.add('opacity-0');
+            modal.firstElementChild.classList.remove('scale-100');
+            modal.firstElementChild.classList.add('scale-95');
+            setTimeout(() => modal.classList.add('hidden'), 200);
+        }
+
+        function handleFormSubmit(e) {
+            e.preventDefault();
+
+            const id = document.getElementById('certId').value;
+            const name = document.getElementById('name').value.trim();
+            const issuer = document.getElementById('issuer').value.trim();
+            const category = document.getElementById('category').value;
+            const issueDate = document.getElementById('issueDate').value;
+            const expiryDate = document.getElementById('expiryDate').value;
+            const code = document.getElementById('code').value.trim();
+            const link = document.getElementById('link').value.trim();
+            const notes = document.getElementById('notes').value.trim();
+
+            if (new Date(expiryDate) <= new Date(issueDate)) {
+                showToast('Data de vencimento deve ser posterior à data de emissão.', 'error');
+                return;
+            }
+
+            if (id) {
+                const index = certifications.findIndex(c => c.id === id);
+                if (index !== -1) {
+                    certifications[index] = { id, name, issuer, category, issueDate, expiryDate, code, link, notes };
+                    showToast('Certificação atualizada!', 'success');
+                }
+            } else {
+                certifications.push({ id: Date.now().toString(), name, issuer, category, issueDate, expiryDate, code, link, notes });
+                showToast('Certificação cadastrada com sucesso!', 'success');
+            }
+
+            saveCertifications();
+            refreshUI();
+            closeModal();
+        }
+
+        function editCert(id) { openModal(id); }
+
+        function deleteCert(id) {
+            const cert = certifications.find(c => c.id === id);
+            if (cert && confirm(`Excluir a certificação "${cert.name}"?`)) {
+                certifications = certifications.filter(c => c.id !== id);
+                saveCertifications();
+                refreshUI();
+                showToast('Certificação excluída.', 'info');
+            }
+        }
+
+        // Settings Modal & Personalization Logic
+        function openSettingsModal() {
+            document.getElementById('cfgAppName').value = config.appName;
+            document.getElementById('cfgSubtitle').value = config.subtitle;
+            document.getElementById('cfgThemeColor').value = config.themeColor;
+            document.getElementById('cfgWarningDays').value = config.warningDays;
+            renderCategoryChips();
+
+            const modal = document.getElementById('settingsModal');
+            modal.classList.remove('hidden');
+            setTimeout(() => {
+                modal.classList.remove('opacity-0');
+                modal.firstElementChild.classList.remove('scale-95');
+                modal.firstElementChild.classList.add('scale-100');
+            }, 10);
+        }
+
+        function closeSettingsModal() {
+            const modal = document.getElementById('settingsModal');
+            modal.classList.add('opacity-0');
+            modal.firstElementChild.classList.remove('scale-100');
+            modal.firstElementChild.classList.add('scale-95');
+            setTimeout(() => modal.classList.add('hidden'), 200);
+        }
+
+        function setThemePreset(hex) {
+            document.getElementById('cfgThemeColor').value = hex;
+            config.themeColor = hex;
+            applyThemeSettings();
+        }
+
+        function renderCategoryChips() {
+            const container = document.getElementById('categoryChips');
+            container.innerHTML = '';
+            config.categories.forEach(cat => {
+                const chip = document.createElement('span');
+                chip.className = 'inline-flex items-center gap-1.5 px-3 py-1 bg-slate-100 text-slate-700 rounded-lg text-xs font-semibold border border-slate-200';
+                chip.innerHTML = `
+                    ${escapeHtml(cat)}
+                    <button onclick="removeCategory('${escapeHtml(cat)}')" class="text-slate-400 hover:text-rose-600 transition-colors"><i data-lucide="x" class="w-3.5 h-3.5"></i></button>
+                `;
+                container.appendChild(chip);
+            });
+            lucide.createIcons();
+        }
+
+        function addCategory() {
+            const input = document.getElementById('newCategoryInput');
+            const val = input.value.trim();
+            if (val && !config.categories.includes(val)) {
+                config.categories.push(val);
+                input.value = '';
+                renderCategoryChips();
+            }
+        }
+
+        function removeCategory(cat) {
+            if (config.categories.length <= 1) {
+                showToast('Você deve manter pelo menos uma categoria.', 'error');
+                return;
+            }
+            config.categories = config.categories.filter(c => c !== cat);
+            renderCategoryChips();
+        }
+
+        function saveSettings() {
+            config.appName = document.getElementById('cfgAppName').value.trim() || DEFAULT_CONFIG.appName;
+            config.subtitle = document.getElementById('cfgSubtitle').value.trim() || DEFAULT_CONFIG.subtitle;
+            config.themeColor = document.getElementById('cfgThemeColor').value;
+            config.warningDays = parseInt(document.getElementById('cfgWarningDays').value) || 30;
+
+            saveConfig();
+            applyThemeSettings();
+            refreshUI();
+            closeSettingsModal();
+            showToast('Configurações salvas!', 'success');
+        }
+
+        // View Details Modal
+        function viewDetails(id) {
+            const cert = certifications.find(c => c.id === id);
+            if (!cert) return;
+
+            const status = calculateStatus(cert.expiryDate);
+            const detailBadge = document.getElementById('detailBadge');
+            detailBadge.textContent = status.label;
+            detailBadge.className = `px-2.5 py-0.5 rounded-full text-xs font-bold inline-block mb-1 ${status.class}`;
+
+            document.getElementById('detailName').textContent = cert.name;
+            document.getElementById('detailIssuer').textContent = cert.issuer;
+            document.getElementById('detailCategory').textContent = cert.category;
+            document.getElementById('detailCode').textContent = cert.code || 'N/A';
+            document.getElementById('detailIssueDate').textContent = formatDate(cert.issueDate);
+            document.getElementById('detailExpiryDate').textContent = formatDate(cert.expiryDate);
+
+            const daysElem = document.getElementById('detailDaysLeft');
+            if (status.days < 0) {
+                daysElem.textContent = `Vencida há ${Math.abs(status.days)} dias`;
+                daysElem.className = 'font-bold text-rose-600';
+            } else {
+                daysElem.textContent = `${status.days} dias restantes`;
+                daysElem.className = status.days <= config.warningDays ? 'font-bold text-amber-600' : 'font-bold text-emerald-600';
+            }
+
+            const linkContainer = document.getElementById('detailLinkContainer');
+            if (cert.link) {
+                document.getElementById('detailLink').href = cert.link;
+                linkContainer.classList.remove('hidden');
+            } else {
+                linkContainer.classList.add('hidden');
+            }
+
+            document.getElementById('detailNotes').textContent = cert.notes || 'Nenhuma observação cadastrada.';
+
+            const modal = document.getElementById('detailsModal');
+            modal.classList.remove('hidden');
+            setTimeout(() => {
+                modal.classList.remove('opacity-0');
+                modal.firstElementChild.classList.remove('scale-95');
+                modal.firstElementChild.classList.add('scale-100');
+            }, 10);
+        }
+
+        function closeDetailsModal() {
+            const modal = document.getElementById('detailsModal');
+            modal.classList.add('opacity-0');
+            modal.firstElementChild.classList.remove('scale-100');
+            modal.firstElementChild.classList.add('scale-95');
+            setTimeout(() => modal.classList.add('hidden'), 200);
+        }
+
+        // Import & Export
+        function exportJSON() {
+            const payload = { config, certifications };
+            const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(payload, null, 2));
+            const dlAnchor = document.createElement('a');
+            dlAnchor.setAttribute("href", dataStr);
+            dlAnchor.setAttribute("download", `certificacoes_backup_${new Date().toISOString().split('T')[0]}.json`);
+            document.body.appendChild(dlAnchor);
+            dlAnchor.click();
+            dlAnchor.remove();
+            showToast('Backup JSON exportado com sucesso!', 'success');
+        }
+
+        function exportCSV() {
+            if (certifications.length === 0) {
+                showToast('Nenhuma certificação para exportar.', 'error');
+                return;
+            }
+            let csvContent = "data:text/csv;charset=utf-8,Nome,Orgao,Categoria,Emissao,Vencimento,Status,Codigo,Link,Notas\n";
+            certifications.forEach(c => {
+                const status = calculateStatus(c.expiryDate);
+                const row = [
+                    `"${c.name.replace(/"/g, '""')}"`,
+                    `"${c.issuer.replace(/"/g, '""')}"`,
+                    `"${c.category.replace(/"/g, '""')}"`,
+                    c.issueDate,
+                    c.expiryDate,
+                    `"${status.label}"`,
+                    `"${(c.code || '').replace(/"/g, '""')}"`,
+                    `"${(c.link || '').replace(/"/g, '""')}"`,
+                    `"${(c.notes || '').replace(/"/g, '""')}"`
+                ].join(',');
+                csvContent += row + "\n";
+            });
+            const encodedUri = encodeURI(csvContent);
+            const link = document.createElement('a');
+            link.setAttribute('href', encodedUri);
+            link.setAttribute('download', `certificacoes_${new Date().toISOString().split('T')[0]}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            link.remove();
+            showToast('Relatório CSV exportado!', 'success');
+        }
+
+        function importJSON(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const parsed = JSON.parse(e.target.result);
+                    if (parsed.certifications && Array.isArray(parsed.certifications)) {
+                        certifications = parsed.certifications;
+                        if (parsed.config) config = { ...DEFAULT_CONFIG, ...parsed.config };
+                        saveCertifications();
+                        saveConfig();
+                        applyThemeSettings();
+                        refreshUI();
+                        showToast('Dados importados com sucesso!', 'success');
+                    } else if (Array.isArray(parsed)) {
+                        certifications = parsed;
+                        saveCertifications();
+                        refreshUI();
+                        showToast('Certificações importadas com sucesso!', 'success');
+                    } else {
+                        showToast('Formato JSON inválido.', 'error');
+                    }
+                } catch (err) {
+                    showToast('Erro ao ler arquivo JSON.', 'error');
+                }
+            };
+            reader.readAsText(file);
+        }
+
+        // Toasts & Utils
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            let bgClass = 'bg-slate-800 text-white';
+            if (type === 'success') bgClass = 'bg-emerald-600 text-white';
+            if (type === 'error') bgClass = 'bg-rose-600 text-white';
+
+            toast.className = `${bgClass} px-4 py-3 rounded-xl shadow-lg text-sm font-medium flex items-center gap-2 transform transition-all duration-300 translate-y-2 opacity-0`;
+            toast.innerHTML = `<span>${escapeHtml(message)}</span>`;
+            container.appendChild(toast);
+
+            setTimeout(() => toast.classList.remove('translate-y-2', 'opacity-0'), 10);
+            setTimeout(() => {
+                toast.classList.add('opacity-0', 'translate-y-2');
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        function formatDate(dateStr) {
+            if (!dateStr) return '--';
+            const [year, month, day] = dateStr.split('-');
+            return `${day}/${month}/${year}`;
+        }
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            return str.replace(/[&<>"']/g, function(m) {
+                return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#039;' }[m];
+            });
+        }
+    </script>
+</body>
+</html>
